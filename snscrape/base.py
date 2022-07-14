@@ -7,7 +7,7 @@ import json
 import logging
 import random
 
-import requests
+import httpx
 import time
 import warnings
 import retrying
@@ -143,9 +143,18 @@ class Scraper:
 
 	name = None
 
-	def __init__(self, retries = 3):
+	def __init__(self, retries=3, proxy=''):
 		self._retries = retries
-		self._session = requests.Session()
+		if not proxy:
+			self._client = httpx.Client(http2=True, verify=True)
+		else:
+			self._proxy = proxy
+			random.shuffle(proxy)
+			x = random.choice(proxy)
+			proxies = {'http://': f'http://{x}',
+					   'https://': f'http://{x}',
+					   }
+			self._client = httpx.Client(http2=True, proxies=proxies, verify=True)
 
 	@abc.abstractmethod
 	def get_items(self):
@@ -165,23 +174,17 @@ class Scraper:
 	def entity(self):
 		return self._get_entity()
 
-	def _request(self, method, url, proxy, params = None, data = None, headers = None, timeout = 10, responseOkCallback = None, allowRedirects = True):
+	def _request(self, method, url, params = None, data = None, headers = None, timeout = 10, responseOkCallback = None, allowRedirects = True):
 		for attempt in range(self._retries + 1):
-			random.shuffle(proxy)
-			x = random.choice(proxy)
-			proxies = {'http': f'http://{x}',
-					   'https': f'http://{x}',
-					   }
-			self._session.proxies = proxies
 			# The request is newly prepared on each retry because of potential cookie updates.
-			req = self._session.prepare_request(requests.Request(method, url, params = params, data = data, headers = headers))
+			req = self._client.get('https://api.myip.com', params=params, headers=headers)
 			logger.info(f'Retrieving {req.url}')
 			logger.debug(f'... with headers: {headers!r}')
 			if data:
 				logger.debug(f'... with data: {data!r}')
 			try:
-				r = self._session.send(req, allow_redirects = allowRedirects, timeout = timeout)
-			except requests.exceptions.RequestException as exc:
+				r = self._client.get(url, params=params, headers=headers, timeout=timeout)
+			except httpx.RequestError as exc:
 				if attempt < self._retries:
 					retrying = ', retrying'
 					level = logging.INFO

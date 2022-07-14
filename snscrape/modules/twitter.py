@@ -298,7 +298,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 	def _ensure_guest_token(self, url = None):
 		if self._guestTokenManager.token is None:
 			_logger.info('Retrieving guest token')
-			r = self._get(self._baseUrl if url is None else url, self._proxy, headers = {'User-Agent': self._userAgent}, responseOkCallback = self._check_guest_token_response)
+			r = self._get(self._baseUrl if url is None else url, headers = {'User-Agent': self._userAgent}, responseOkCallback = self._check_guest_token_response)
 			if (match := re.search(r'document\.cookie = decodeURIComponent\("gt=(\d+); Max-Age=10800; Domain=\.twitter\.com; Path=/; Secure"\);', r.text)):
 				_logger.debug('Found guest token in HTML')
 				self._guestTokenManager.token = match.group(1)
@@ -308,19 +308,19 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			if not self._guestTokenManager.token:
 				_logger.debug('No guest token in response')
 				_logger.info('Retrieving guest token via API')
-				r = self._post('https://api.twitter.com/1.1/guest/activate.json', self._proxy, data = b'', headers = self._apiHeaders, responseOkCallback = self._check_guest_token_response)
+				r = self._post('https://api.twitter.com/1.1/guest/activate.json', data = b'', headers = self._apiHeaders, responseOkCallback = self._check_guest_token_response)
 				o = r.json()
 				if not o.get('guest_token'):
 					raise snscrape.base.ScraperError('Unable to retrieve guest token')
 				self._guestTokenManager.token = o['guest_token']
 			assert self._guestTokenManager.token
 		_logger.debug(f'Using guest token {self._guestTokenManager.token}')
-		self._session.cookies.set('gt', self._guestTokenManager.token, domain = '.twitter.com', path = '/', secure = True, expires = self._guestTokenManager.setTime + 10800)
+		self._client.cookies.set('gt', self._guestTokenManager.token, domain = '.twitter.com', path = '/')
 		self._apiHeaders['x-guest-token'] = self._guestTokenManager.token
 
 	def _unset_guest_token(self):
 		self._guestTokenManager.reset()
-		del self._session.cookies['gt']
+		del self._client.cookies['gt']
 		del self._apiHeaders['x-guest-token']
 
 	def _check_api_response(self, r):
@@ -336,7 +336,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 
 	def _get_api_data(self, endpoint, params):
 		self._ensure_guest_token()
-		r = self._get(endpoint, self._proxy, params = params, headers = self._apiHeaders, responseOkCallback = self._check_api_response)
+		r = self._get(endpoint, params = params, headers = self._apiHeaders, responseOkCallback = self._check_api_response)
 		try:
 			obj = r.json()
 		except json.JSONDecodeError as e:
@@ -694,13 +694,12 @@ class TwitterSearchScraper(_TwitterAPIScraper):
 class TwitterUserScraper(TwitterSearchScraper):
 	name = 'twitter-user'
 
-	def __init__(self, username, proxy, isUserId = False, **kwargs):
+	def __init__(self, username, isUserId = False, **kwargs):
 		if not self.is_valid_username(username):
 			raise ValueError('Invalid username')
 		super().__init__(f'from:{username}', **kwargs)
 		self._username = username
 		self._isUserId = isUserId
-		self._proxy = proxy
 		self._baseUrl = f'https://twitter.com/{self._username}' if not self._isUserId else f'https://twitter.com/i/user/{self._username}'
 
 	def _get_entity(self):
