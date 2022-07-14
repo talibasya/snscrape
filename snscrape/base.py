@@ -5,12 +5,14 @@ import datetime
 import functools
 import json
 import logging
+import random
+
 import requests
 import time
 import warnings
-
-
+import retrying
 logger = logging.getLogger(__name__)
+
 
 
 class _DeprecatedProperty:
@@ -120,10 +122,12 @@ class URLItem(Item):
 	'''A generic item which only holds a URL string.'''
 
 	def __init__(self, url):
+
 		self._url = url
 
 	@property
 	def url(self):
+
 		return self._url
 
 	def __str__(self):
@@ -139,9 +143,8 @@ class Scraper:
 
 	name = None
 
-	def __init__(self, *, retries = 3, proxies = None):
+	def __init__(self, retries = 3):
 		self._retries = retries
-		self._proxies = proxies
 		self._session = requests.Session()
 
 	@abc.abstractmethod
@@ -162,20 +165,22 @@ class Scraper:
 	def entity(self):
 		return self._get_entity()
 
-	def _request(self, method, url, params = None, data = None, headers = None, timeout = 10, responseOkCallback = None, allowRedirects = True, proxies = None):
-		proxies = proxies or self._proxies or {}
+	def _request(self, method, url, proxy, params = None, data = None, headers = None, timeout = 10, responseOkCallback = None, allowRedirects = True):
 		for attempt in range(self._retries + 1):
+			random.shuffle(proxy)
+			x = random.choice(proxy)
+			proxies = {'http': f'http://{x}',
+					   'https': f'http://{x}',
+					   }
+			self._session.proxies = proxies
 			# The request is newly prepared on each retry because of potential cookie updates.
 			req = self._session.prepare_request(requests.Request(method, url, params = params, data = data, headers = headers))
-			environmentSettings = self._session.merge_environment_settings(req.url, proxies, None, None, None)
 			logger.info(f'Retrieving {req.url}')
 			logger.debug(f'... with headers: {headers!r}')
 			if data:
 				logger.debug(f'... with data: {data!r}')
-			if environmentSettings:
-				logger.debug(f'... with environmentSettings: {environmentSettings!r}')
 			try:
-				r = self._session.send(req, allow_redirects = allowRedirects, timeout = timeout, **environmentSettings)
+				r = self._session.send(req, allow_redirects = allowRedirects, timeout = timeout)
 			except requests.exceptions.RequestException as exc:
 				if attempt < self._retries:
 					retrying = ', retrying'
@@ -224,15 +229,15 @@ class Scraper:
 		return self._request('POST', *args, **kwargs)
 
 	@classmethod
-	def _cli_setup_parser(cls, subparser):
+	def cli_setup_parser(cls, subparser):
 		pass
 
 	@classmethod
-	def _cli_from_args(cls, args):
-		return cls._cli_construct(args)
+	def cli_from_args(cls, args):
+		return cls._construct(args)
 
 	@classmethod
-	def _cli_construct(cls, argparseArgs, *args, **kwargs):
+	def cli_construct(cls, argparseArgs, *args, **kwargs):
 		return cls(*args, **kwargs, retries = argparseArgs.retries)
 
 
