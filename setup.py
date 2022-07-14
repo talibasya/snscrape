@@ -24,7 +24,8 @@ setuptools.setup(
 	setup_requires = ['setuptools_scm'],
 	use_scm_version = True,
 	install_requires = [
-		'requests[socks]',
+		'httpx',
+		'httpx[http2]'
 		'lxml',
 		'beautifulsoup4',
 		'pytz; python_version < "3.9.0"',
