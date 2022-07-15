@@ -5,14 +5,12 @@ import datetime
 import functools
 import json
 import logging
-import random
-
 import httpx
 import time
 import warnings
-import retrying
-logger = logging.getLogger(__name__)
 
+
+logger = logging.getLogger(__name__)
 
 
 class _DeprecatedProperty:
@@ -122,12 +120,10 @@ class URLItem(Item):
 	'''A generic item which only holds a URL string.'''
 
 	def __init__(self, url):
-
 		self._url = url
 
 	@property
 	def url(self):
-
 		return self._url
 
 	def __str__(self):
@@ -143,18 +139,10 @@ class Scraper:
 
 	name = None
 
-	def __init__(self, retries=3, proxy=''):
+	def __init__(self, *, retries = 3, proxies = None):
 		self._retries = retries
-		if not proxy:
-			self._client = httpx.Client(http2=True, verify=True)
-		else:
-			self._proxy = proxy
-			random.shuffle(proxy)
-			x = random.choice(proxy)
-			proxies = {'http://': f'http://{x}',
-					   'https://': f'http://{x}',
-					   }
-			self._client = httpx.Client(http2=True, proxies=proxies, verify=True)
+		self._client = httpx.Client(http2=True, proxies=proxies, verify=True)
+
 
 	@abc.abstractmethod
 	def get_items(self):
@@ -174,16 +162,16 @@ class Scraper:
 	def entity(self):
 		return self._get_entity()
 
-	def _request(self, method, url, params = None, data = None, headers = None, timeout = 10, responseOkCallback = None, allowRedirects = True):
+	def _request(self, method, url, params = None, data = None, headers = None, timeout = 10, responseOkCallback = None):
 		for attempt in range(self._retries + 1):
 			# The request is newly prepared on each retry because of potential cookie updates.
-			req = self._client.get('https://api.myip.com', params=params, headers=headers)
+			req = self._client.build_request(method, url, params=params, data=data, headers=headers, timeout=timeout)
 			logger.info(f'Retrieving {req.url}')
 			logger.debug(f'... with headers: {headers!r}')
 			if data:
 				logger.debug(f'... with data: {data!r}')
 			try:
-				r = self._client.get(url, params=params, headers=headers, timeout=timeout)
+				r = self._client.send(req)
 			except httpx.RequestError as exc:
 				if attempt < self._retries:
 					retrying = ', retrying'
@@ -232,15 +220,15 @@ class Scraper:
 		return self._request('POST', *args, **kwargs)
 
 	@classmethod
-	def cli_setup_parser(cls, subparser):
+	def _cli_setup_parser(cls, subparser):
 		pass
 
 	@classmethod
-	def cli_from_args(cls, args):
-		return cls._construct(args)
+	def _cli_from_args(cls, args):
+		return cls._cli_construct(args)
 
 	@classmethod
-	def cli_construct(cls, argparseArgs, *args, **kwargs):
+	def _cli_construct(cls, argparseArgs, *args, **kwargs):
 		return cls(*args, **kwargs, retries = argparseArgs.retries)
 
 
