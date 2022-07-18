@@ -140,10 +140,10 @@ class Scraper:
 
 	name = None
 
-	def __init__(self, *, retries = 3, proxies = None):
+	def __init__(self, *, retries = 3, proxies = None, timeout = 10):
 		self._retries = retries
-		self._client = httpx.Client(http2=True, proxies=proxies, verify=True)
-		self._async_client = httpx.AsyncClient(http2=True, proxies=proxies, verify=True)
+		self._client = httpx.Client(http2=True, proxies=proxies, verify=True, timeout=timeout)
+		self._async_client = httpx.AsyncClient(http2=True, proxies=proxies, verify=True, timeout=timeout)
 
 	@abc.abstractmethod
 	def get_items(self):
@@ -166,10 +166,10 @@ class Scraper:
 	async def async_entity(self):
 		return await self._get_entity()
 
-	def _request(self, method, url, params = None, data = None, headers = None, timeout = 10, responseOkCallback = None):
+	def _request(self, method, url, params = None, data = None, headers = None, responseOkCallback = None):
 		for attempt in range(self._retries + 1):
 			# The request is newly prepared on each retry because of potential cookie updates.
-			req = self._client.build_request(method, url, params = params, data = data, headers = headers, timeout = timeout)
+			req = self._client.build_request(method, url, params = params, data = data, headers = headers)
 			logger.info(f'Retrieving {req.url}')
 			logger.debug(f'... with headers: {headers!r}')
 			if data:
@@ -217,10 +217,10 @@ class Scraper:
 			raise ScraperException(msg)
 		raise RuntimeError('Reached unreachable code')
 
-	async def _async_request(self, method, url, params = None, data = None, headers = None, timeout = 10, responseOkCallback = None):
+	async def _async_request(self, method, url, params = None, data = None, headers = None, responseOkCallback = None):
 		for attempt in range(self._retries + 1):
 			# The request is newly prepared on each retry because of potential cookie updates.
-			req = self._async_client.build_request(method, url, params = params, data = data, headers = headers, timeout = timeout)
+			req = self._async_client.build_request(method, url, params = params, data = data, headers = headers)
 			logger.info(f'Retrieving {req.url}')
 			logger.debug(f'... with headers: {headers!r}')
 			if data:
