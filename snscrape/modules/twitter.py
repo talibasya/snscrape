@@ -1481,6 +1481,8 @@ class TwitterUserScraper(TwitterSearchScraper):
 			endpoint = 'https://twitter.com/i/api/graphql/I5nvpI91ljifos1Y3Lltyg/UserByRestId'
 		variables = {fieldName: str(self._user), 'withSafetyModeUserFields': True, 'withSuperFollowsUserFields': True}
 		obj = self._get_api_data(endpoint, _TwitterAPIType.GRAPHQL, params = variables)
+    if not obj['data'] or 'result' not in obj['data']['user']:
+			return None
 		if not obj['data'] or obj['data']['user']['result']['__typename'] == 'UserUnavailable':
 			return None
 		user = obj['data']['user']['result']
