@@ -1527,12 +1527,13 @@ class TwitterUserScraper(TwitterSearchScraper):
 			label = label,
 		  )
 
-	def get_items(self):
+	def get_items(self, additional_query=''):
 		if self._isUserId:
 			# Resolve user ID to username
 			self._user = self.entity.username
 			self._isUserId = False
-			self._query = f'from:{self._user}'
+			self._query = f'from:{self._user} {additional_query}'
+			self._query = self._query.strip()
 		yield from super().get_items()
 
 	@staticmethod
