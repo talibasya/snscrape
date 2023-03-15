@@ -1540,7 +1540,8 @@ class TwitterUserScraper(TwitterSearchScraper):
 		if self._isUserId:
 			# Resolve user ID to username
 			u = await self.async_entity()
-			self._user = u.username
+			if u:
+				self._user = u.username
 			self._isUserId = False
 			self._query = f'from:{self._user}'
 		async for v in super().get_items():
