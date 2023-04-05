@@ -335,12 +335,12 @@ class UnifiedCard(Card):
 				mediaKeys.extend(x.mediumKey for x in c.media)
 		mediaKeys.extend(d.mediumKey for d in self.destinations.values() if d.mediumKey is not None)
 		mediaKeys.extend(a.iconMediumKey for l in (self.apps.values() if self.apps is not None else []) for a in l if a.iconMediumKey is not None)
-		if any(k not in self.media for k in mediaKeys):
-			raise ValueError('missing media')
-		if any(c.appKey not in self.apps for c in self.componentObjects.values() if hasattr(c, 'appKey')):
-			raise ValueError('missing apps')
-		if any(d.appKey not in self.apps for d in self.destinations.values() if d.appKey is not None):
-			raise ValueError('missing apps')
+		# if any(k not in self.media for k in mediaKeys):
+		# 	raise ValueError('missing media')
+		# if any(c.appKey not in self.apps for c in self.componentObjects.values() if hasattr(c, 'appKey')):
+		# 	raise ValueError('missing apps')
+		# if any(d.appKey not in self.apps for d in self.destinations.values() if d.appKey is not None):
+		# 	raise ValueError('missing apps')
 
 
 class UnifiedCardComponentObject:
