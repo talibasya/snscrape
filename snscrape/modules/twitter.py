@@ -1366,8 +1366,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			kwargs['link'] = TextLink(text = entity.get('display_url'), url = entity.get('expanded_url', user['url']), tcourl = user['url'], indices = tuple(entity['indices']))
 		kwargs['profileImageUrl'] = user['profile_image_url_https']
 		kwargs['profileBannerUrl'] = user.get('profile_banner_url')
-		if 'ext' in user and (label := user['ext']['highlightedLabel']['r']['ok'].get('label')):
-			kwargs['label'] = self._user_label_to_user_label(label)
+		# if 'ext' in user and (label := user['ext']['highlightedLabel']['r']['ok'].get('label')):
+		# 	kwargs['label'] = self._user_label_to_user_label(label)
 		return User(**kwargs)
 
 	def _user_label_to_user_label(self, label):
